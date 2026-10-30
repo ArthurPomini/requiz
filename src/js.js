@@ -9,7 +9,7 @@ const SIZE={'6A':30,'7B':34,'8A':33,'9C':45,'1A':40};
 const HIST={'7B|Matemática':[46,48,50,52,54,56,58],'7B|Ciências':[55,57,58,60,59,61,62],'7B|Português':[48,49,50,52,51,52,52],'8A|Ciências':[54,57,59,61,63,64,66],'9C|Português':[58,56,55,53,51,50,49],'1A|Matemática':[50,51,52,52,54,55,55]};
 const SKPREV={'7B|Matemática':{'Frações equivalentes':76,'Comparar frações':77,'Operações com frações':50},'7B|Ciências':{'Ecossistemas':58,'Cadeia alimentar':72},'7B|Português':{'Interpretação de texto':50,'Pontuação':44},'8A|Ciências':{'Células':65,'Fotossíntese':52},'9C|Português':{'Interpretação de texto':66,'Concordância verbal':40},'1A|Matemática':{'Funções afins':45,'Equações do 2º grau':66}};
 const PREV={};Object.entries(HIST).forEach(([k,v])=>PREV[k]=v[v.length-1]);
-const fresh=()=>({q:{},d:{},res:Object.entries(SEED).map(([k,v])=>({k,s:v[2],seed:v[0]})),doubts:[],rev:[],v:SEEDV.map(x=>({...x})),nid:20});
+const fresh=()=>({q:{},d:{},res:Object.entries(SEED).map(([k,v])=>({k,s:v[2],seed:v[0]})),doubts:[],rev:[],xp:{},av:{},v:SEEDV.map(x=>({...x})),nid:20});
 let pv='plan',cv='geral',S=fresh(),me=null,pf={},cf={se:'',c:'',s:''},lrole='prof',stu={D:{}},busy='',err='';
 try{const j=JSON.parse(localStorage.getItem('edu3')||'null');if(j)S=Object.assign(S,j)}catch(e){}
 const save=()=>{try{localStorage.setItem('edu3',JSON.stringify(S))}catch(e){}};
@@ -55,7 +55,7 @@ const st=()=>stu.rv?stu.rv:(stu.D[stu.o]||(stu.D[stu.o]={}));
 function startRun(){st().run={items:S.q[stu.o].map(x=>({x,orig:true})),pos:0,sel:null,fb:null,xp:0,streak:0,wr:[],rec:0,ph:'play',n:S.q[stu.o].length,lvl:2};render()}
 function checkAns(){
   const r=st().run,it=r.items[r.pos],ok=r.sel===it.x.answer;it.ok=ok;r.fb=ok;
-  if(ok){r.xp+=it.orig?10:5;r.streak++;if(!it.orig)r.rec++}else{r.streak=0;if(it.orig)r.wr.push(it)}
+  stu.up=null;if(ok){const g=it.orig?10:5;r.xp+=g;gainXp(g);r.streak++;if(!it.orig)r.rec++}else{r.streak=0;if(it.orig)r.wr.push(it)}
   if(ok&&r.streak>=2)r.lvl=Math.min(3,r.lvl+1);if(!ok)r.lvl=Math.max(1,r.lvl-1);
   render();
 }
@@ -79,8 +79,8 @@ function finish(){
   const d=st(),r=d.run,res={};
   r.items.filter(i=>i.orig).forEach(i=>{const a=res[i.x.skill]||(res[i.x.skill]=[0,0]);a[1]++;if(i.ok)a[0]++});
   r.items.filter(i=>!i.orig&&i.ok).forEach(i=>{const a=res[i.x.skill];if(a)a[0]=Math.min(a[1],a[0]+1)});
-  if(d.e){const ok=r.items.filter(i=>i.ok).length,e=d.e;e.st=ok>=2?Math.min(e.st+1,3):0;e.due=Date.now()+[1,3,7,21][e.st]*864e5;d.res={};r.ph='done';save();render();return}
-  d.res=res;r.ph='done';S.res.push({k:stu.o,sid:me.id,s:res,q:1});Object.entries(res).forEach(([sk,v])=>{if(v[1]&&v[0]/v[1]>=.7)schedule(stu.o,sk)});save();render();
+  if(d.e){gainXp(10);r.xp+=10;const ok=r.items.filter(i=>i.ok).length,e=d.e;e.st=ok>=2?Math.min(e.st+1,3):0;e.due=Date.now()+[1,3,7,21][e.st]*864e5;d.res={};r.ph='done';save();render();return}
+  gainXp(20);r.xp+=20;d.res=res;r.ph='done';S.res.push({k:stu.o,sid:me.id,s:res,q:1});Object.entries(res).forEach(([sk,v])=>{if(v[1]&&v[0]/v[1]>=.7)schedule(stu.o,sk)});save();render();
 }
 function schedule(k,sk){if(!S.rev.some(e=>e.sid===me.id&&e.k===k&&e.s===sk))S.rev.push({sid:me.id,k,s:sk,st:0,due:Date.now()+864e5})}
 function genReview(i){
@@ -204,9 +204,44 @@ function profView(off){
   }else h+=`<div class="bx"><h2>Dúvidas anônimas</h2>${ds.length?ds.map(x=>`<p>• ${esc(x.t)} <span class="mut">(${x.d})</span></p>`).join(''):'<p class="mut">Nenhuma dúvida enviada.</p>'}</div>`;
   return shell(nav,h);
 }
+const AVC={sk:['#F5D0B0','#E8B48A','#C98E63','#A56B43','#7A4A2B','#5A341D'],hc:['#2B1B12','#5B3A1E','#B5651D','#D9A441','#7A7A7A','#C23B5A'],sh:['#1F3A5F','#2E7D5B','#C0392B','#F2B705','#6C4AB6','#E67E22'],pc:['#2F5D9B','#2B2B33','#B59A62','#2E7D5B','#7A2E3E','#6B7280'],tc:['#F5F5F5','#2B2B33','#C0392B','#2F5D9B','#F2B705','#E86AA6']};
+const HAIRS=['Curto','Longo','Cacheado','Coque','Raspado'],SHIRTS=['Camiseta','Moletom'],PANTS=['Calça','Bermuda'],ACCS=[['Nenhum',1],['Óculos escuros',2],['Fone',3],['Boné',4],['Coroa',5]];
+const lvOf=x=>Math.floor(x/100)+1,myXp=()=>(S.xp||{})[me.id]||0;
+function gainXp(n){S.xp=S.xp||{};const a=lvOf(myXp());S.xp[me.id]=myXp()+n;const b=lvOf(myXp());if(b>a)stu.up=b;save()}
+const myAv=()=>Object.assign({sk:1,hs:0,hc:0,st:0,sh:0,pt:0,pc:0,tc:0,ac:0},(S.av||{})[me.id]);
+function avatarSVG(c,px){
+  const sk=AVC.sk[c.sk],hc=AVC.hc[c.hc],sh=AVC.sh[c.sh],pc=AVC.pc[c.pc],tc=AVC.tc[c.tc],p=[];
+  const R=(r,a,b,col)=>p.push(`<rect x="${a}" y="${r}" width="${b-a+1}" height="1" fill="${col}"/>`),L=(rows,col)=>rows.forEach(([r,a,b])=>R(r,a,b,col));
+  R(24,3,12,'#C9D3E3');
+  R(17,4,11,pc);R(18,4,11,pc);
+  [19,20,21].forEach(r=>{const col=c.pt===1&&r>19?sk:pc;R(r,4,6,col);R(r,9,11,col)});
+  R(22,3,6,tc);R(22,9,12,tc);R(23,3,6,'#2a2a2a');R(23,9,12,'#2a2a2a');
+  for(let r=11;r<=16;r++){R(r,4,11,sh);const col=r<=(c.st===1?15:12)?sh:sk;R(r,2,3,col);R(r,12,13,col)}
+  R(10,7,8,sk);for(let r=2;r<=8;r++)R(r,4,11,sk);R(9,5,10,sk);
+  const top=[[1,5,10],[2,4,11],[3,4,6],[3,9,11]],side=[[3,3,3],[3,12,12],[4,3,4],[5,3,4],[6,3,4],[7,3,3],[8,3,3],[9,3,3],[4,11,12],[5,11,12],[6,11,12],[7,12,12],[8,12,12],[9,12,12]];
+  L([top,[...top,...side],[[0,5,10],[1,3,12],[2,3,12],[3,3,6],[3,9,12],[4,3,4],[4,11,12],[5,3,3],[5,12,12]],[...top,[0,6,9]],[[2,5,10],[3,4,4],[3,11,11]]][c.hs],hc);
+  R(5,6,6,'#2a1d17');R(5,9,9,'#2a1d17');R(7,7,8,'#8a3f33');
+  if(c.ac===1){L([[5,5,10],[6,5,6],[6,9,10]],'#222');L([[5,5,5],[5,9,9]],'#6B7B8C')}
+  if(c.ac===2)L([[1,4,11],[2,3,3],[3,3,3],[4,3,3],[2,12,12],[3,12,12],[4,12,12],[5,2,3],[6,2,3],[7,2,3],[5,12,13],[6,12,13],[7,12,13]],'#333');
+  if(c.ac===3){L([[1,4,11],[2,4,11]],'#1F3A5F');L([[3,8,13]],'#15304F')}
+  if(c.ac===4){L([[1,5,10],[0,5,5],[0,7,8],[0,10,10]],'#F2B705')}
+  return `<svg viewBox="0 0 16 25" class="spr" width="${px}" height="${Math.round(px*25/16)}" shape-rendering="crispEdges" role="img" aria-label="Seu personagem">${p.join('')}</svg>`;
+}
+function alunoAside(){
+  const xp=myXp(),lv=lvOf(xp),p=xp%100;
+  return `<aside class="sb char"><div class="stage">${avatarSVG(myAv(),128)}</div><div class="info col"><p><b>${esc(me.name)}</b><br>Nível ${lv}</p><div class="xpbar" role="progressbar" aria-label="XP do nível ${lv}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${p}"><i data-to="${p}" style="width:${p}%"></i></div><p class="mut">${p}/100 XP para o nível ${lv+1}</p>${stu.up?`<p class="fb ok">Nível ${stu.up}! Veja o que liberou no seu visual.</p>`:''}<button class="btn2" data-act="avedit">Editar visual</button><button class="btn2" data-act="out">Sair</button></div></aside>`;
+}
+function avEditor(){
+  const c=myAv(),lv=lvOf(myXp());
+  const nm={sk:'Pele',hc:'Cor do cabelo',sh:'Cor da camisa',pc:'Cor da calça',tc:'Cor do tênis'};
+  const sw=f=>AVC[f].map((col,i)=>`<button class="sw ${c[f]===i?'on':''}" style="background:${col}" data-act="av" data-f="${f}" data-v="${i}" aria-label="${nm[f]} ${i+1}" aria-pressed="${c[f]===i}"></button>`).join('');
+  const tb=(f,arr)=>arr.map((t,i)=>`<button class="tab ${c[f]===i?'on':''}" data-act="av" data-f="${f}" data-v="${i}">${t}</button>`).join('');
+  return `<div class="row"><button class="btn2" data-act="avx">← Voltar</button><h2>Meu visual</h2></div><div class="bx"><p class="mut">As mudanças aparecem no seu personagem. Ganhe XP nos quizzes para liberar acessórios.</p><h3>Pele</h3><div class="row">${sw('sk')}</div><h3>Cabelo</h3><div class="row">${tb('hs',HAIRS)}</div><div class="row">${sw('hc')}</div><h3>Camisa</h3><div class="row">${tb('st',SHIRTS)}</div><div class="row">${sw('sh')}</div><h3>Calça</h3><div class="row">${tb('pt',PANTS)}</div><div class="row">${sw('pc')}</div><h3>Tênis</h3><div class="row">${sw('tc')}</div><h3>Acessório</h3><div class="row">${ACCS.map(([t,n],i)=>`<button class="tab ${c.ac===i?'on':''}" data-act="av" data-f="ac" data-v="${i}" ${lv<n?'disabled':''}>${t}${lv<n?' · nível '+n:''}</button>`).join('')}</div></div>`;
+}
 function aluView(off){
   const c=me.c,ss=[...new Set(S.v.filter(x=>x.c===c).map(x=>x.s))];
   let h=`<p class="mut">Turma ${CL[c].n}</p>`;
+  if(stu.avm)return avEditor();
   if(stu.rv){const v=stu.rv;h+=`<div class="row"><button class="btn2" data-act="rvx">← Voltar</button><h2>Revisão: ${esc(v.e.s)}</h2></div>`+(v.res?`<div class="bx"><h2>Revisão concluída!</h2><p class="mut">Próxima revisão em ${Math.max(1,Math.round((v.e.due-Date.now())/864e5))} dia(s).</p><button class="btn" data-act="rvx">Voltar às disciplinas</button></div>`:playHTML(v));return h}
   if(!stu.o){
     h+=revCard()+`<h2>Suas disciplinas</h2>`+ss.map(s=>{const k=c+'|'+s,d=stu.D[k]||{};const t=!S.q[k]?'sem atividade':d.res?'concluída':'atividade disponível';return `<div class="bx"><div class="row"><h3 class="g">${esc(s)}</h3><span class="chip">${t}</span><button class="btn2" data-act="open" data-k="${esc(k)}" ${S.q[k]?'':'disabled'}>Abrir</button></div></div>`}).join('');
@@ -308,9 +343,10 @@ function render(){
   document.querySelectorAll('#plan,#doubt,#dsub,#np,#nc,#ns,#resumo').forEach(e=>keep[e.id]=e.value);
   let h='';
   if(!me)h=loginView()+stat();
-  else if(me.r==='alu')h=`<div class="row"><div class="g"><h1>Plataforma Educacional</h1><p class="mut">${esc(me.name)} · Aluno</p></div><button class="btn2" data-act="out">Sair</button></div>`+stat()+aluView(off);
+  else if(me.r==='alu')h=`<div class="app">${alunoAside()}<div class="m">`+stat()+aluView(off)+`</div></div>`;
   else h=me.r==='prof'?profView(off):coordView();
   $('#app').innerHTML=h;
+  const xb=document.querySelector('.xpbar i');if(xb){const to=xb.dataset.to;xb.style.width=(window.__xp0==null?to:window.__xp0)+'%';requestAnimationFrame(()=>requestAnimationFrame(()=>{xb.style.width=to+'%'}));window.__xp0=to}
   Object.entries(keep).forEach(([k,v])=>{const e=document.getElementById(k);if(e)e.value=v});
 }
 document.addEventListener('click',e=>{
@@ -322,7 +358,10 @@ document.addEventListener('click',e=>{
   else if(a==='del'){S.d[k].splice(+b.dataset.i,1);save();render()}
   else if(a==='ok'){S.q[k]=S.d[k];delete S.d[k];save();render()}
   else if(a==='open'){stu.o=b.dataset.k;render()}
-  else if(a==='back'){stu.o=null;render()}
+  else if(a==='back'){stu.o=null;stu.up=null;render()}
+  else if(a==='avedit'){stu.avm=true;render()}
+  else if(a==='avx'){stu.avm=false;render()}
+  else if(a==='av'){const f=b.dataset.f,v=+b.dataset.v;S.av=S.av||{};S.av[me.id]=Object.assign(myAv(),{[f]:v});save();render()}
   else if(a==='nav'){if(b.dataset.w==='p')pv=b.dataset.k;else cv=b.dataset.k;err='';render()}
   else if(a==='gres')genRes();
   else if(a==='aprov'){S.resumoOk=true;save();render()}
@@ -330,7 +369,7 @@ document.addEventListener('click',e=>{
   else if(a==='csv')exportCsv();
   else if(a==='tpl')dl('modelo-vinculos.csv','professor,turma,disciplina\nPROF01,7B,Matemática\n');
   else if(a==='rev')genReview(+b.dataset.i);
-  else if(a==='rvx'){stu.rv=null;render()}
+  else if(a==='rvx'){stu.rv=null;stu.up=null;render()}
   else if(a==='sim'){S.rev.forEach(e=>{if(e.sid===me.id)e.due-=864e5});save();render()}
   else if(a==='start')startRun();
   else if(a==='check')checkAns();
