@@ -10,14 +10,17 @@ reforço personalizado e uma nova avaliação.
 - **Professor:** filtro de turma e disciplina, planejamento semanal, questionário gerado por IA com revisão e aprovação, painel agregado e dúvidas anônimas.
 - **Aluno:** quiz no estilo Duolingo, uma questão por vez. As erradas voltam no final com números diferentes. Depois há reforço personalizado.
 - **Coordenação:** filtros por série, turma e disciplina, ranking de evolução, habilidades críticas e cadastro de vínculos (professor × turma × disciplina).
-- **Privacidade:** painéis mostram dados agregados, sem nomes de alunos.
+- **Privacidade:** painéis mostram dados agregados para coordenação/direção, sem nomes de alunos.
 
-## Estrutura
+## Estrutura do Repositório
 
-```
-index.html          # o app inteiro (HTML + CSS + JS, sem build)
-worker/worker.js    # Cloudflare Worker que chama a API da Anthropic
-worker/wrangler.toml
+```text
+├── index.html          # Front-end completo (HTML + CSS + JS, sem build)
+├── wrangler.toml       # Configuração do Cloudflare Worker
+├── worker/
+│   └── worker.js       # Cloudflare Worker (ponte segura para a API do Google Gemini)
+├── .gitignore          # Proteção para não subir segredos (.dev.vars, .env) e caches
+└── README.md           # Documentação do projeto
 ```
 
 ## Contas de teste
@@ -29,16 +32,25 @@ worker/wrangler.toml
 | Aluno | A1001 | 1111 |
 | Aluno | A1002 | 2222 |
 | Coordenação | COORD | 9999 |
+| Direção | DIR01 | 0000 |
+| Secretaria | SEC01 | 0001 |
 
-## Como publicar
+## Como configurar e publicar
 
-1. **Site:** ative o GitHub Pages (Settings > Pages > branch `main`, pasta `/root`).
-2. **IA:** crie um Worker na Cloudflare com o conteúdo de `worker/worker.js`.
-   - Secret `ANTHROPIC_API_KEY`: sua chave da API.
-   - Variável `ALLOWED_ORIGIN`: endereço do seu site (ex.: `https://seuusuario.github.io`).
-3. Copie a URL do Worker e cole em `API_URL` no começo do script do `index.html`.
+1. **Site (Front-end):** ative o GitHub Pages (*Settings > Pages > branch `main`, pasta `/ (root)`*).
+2. **IA (Cloudflare Worker):**
+   - Configure o secret `GEMINI_API_KEY` na Cloudflare (*Settings > Variables and Secrets*) ou via terminal:
+     ```bash
+     npx wrangler secret put GEMINI_API_KEY
+     ```
+   - Para rodar localmente com `npx wrangler dev`, coloque sua chave no arquivo `.dev.vars` (já ignorado pelo `.gitignore`):
+     ```env
+     GEMINI_API_KEY=sua_chave_do_google_ai_studio
+     ```
+   - Variável `ALLOWED_ORIGIN`: endereço do seu site (ex.: `https://seuusuario.github.io`) ou `*` para permitir qualquer origem em testes.
+3. Copie a URL publicada do Worker e coloque na constante `API_URL` no script do `index.html`.
 
-Nunca coloque a chave da API no `index.html`.
+> **Importante:** Nunca coloque a chave da API diretamente no `index.html` ou no `wrangler.toml`.
 
 ## Limitações atuais
 

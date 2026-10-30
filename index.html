@@ -55,24 +55,21 @@ const HIST={'7B|Matemática':[46,48,50,52,54,56,58],'7B|Ciências':[55,57,58,60,
 const SKPREV={'7B|Matemática':{'Frações equivalentes':76,'Comparar frações':77,'Operações com frações':50},'7B|Ciências':{'Ecossistemas':58,'Cadeia alimentar':72},'7B|Português':{'Interpretação de texto':50,'Pontuação':44},'8A|Ciências':{'Células':65,'Fotossíntese':52},'9C|Português':{'Interpretação de texto':66,'Concordância verbal':40},'1A|Matemática':{'Funções afins':45,'Equações do 2º grau':66}};
 const PREV={};Object.entries(HIST).forEach(([k,v])=>PREV[k]=v[v.length-1]);
 const fresh=()=>({q:{},d:{},res:Object.entries(SEED).map(([k,v])=>({k,s:v[2],seed:v[0]})),doubts:[],rev:[],v:SEEDV.map(x=>({...x})),nid:20});
-let pv='plan',cv='geral',S=fresh(),me=null,pf={},cf={se:'',c:'',s:''},lrole='prof',stu={D:{}},busy='',err='',sample=null;
+let pv='plan',cv='geral',S=fresh(),me=null,pf={},cf={se:'',c:'',s:''},lrole='prof',stu={D:{}},busy='',err='';
 try{const j=JSON.parse(localStorage.getItem('edu3')||'null');if(j)S=Object.assign(S,j)}catch(e){}
 const save=()=>{try{localStorage.setItem('edu3',JSON.stringify(S))}catch(e){}};
-if(window.claude)claude.use('sample').then(s=>{sample=s;render()});
 const fmt='Responda SOMENTE com JSON válido, sem texto extra.';
 const qfmt='"questions":[{"skill":"habilidade curta","level":2,"q":"enunciado","options":["A","B","C","D"],"answer":0,"why":"explicação curta (1 a 2 frases) de por que a correta está certa e qual erro comum leva às outras"}]';
 const valid=qs=>Array.isArray(qs)&&qs.length&&qs.every(x=>x.q&&Array.isArray(x.options)&&x.options.length>=2&&Number.isInteger(x.answer));
-const API_URL='https://plataforma-educacional.arthurpomini1.workers.dev/';
-const hasApi=()=>API_URL.startsWith('https://');
+const API_URL='https://requiz.arthurpomini1.workers.dev/';
+const hasApi=()=>API_URL.startsWith('https://')||API_URL.startsWith('http://');
 async function ai(p){
-  if(hasApi()){
-    const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:p})});
-    if(!r.ok)throw new Error('A IA não respondeu ('+r.status+'). Tente de novo.');
-    const j=await r.json(),m=String(j.text||'').replace(/```json|```/g,'').trim();
-    try{return JSON.parse(m)}catch(e){throw new Error('Resposta da IA fora do formato. Tente de novo.')}
-  }
-  if(!sample)throw new Error('IA não configurada: coloque a URL do Worker em API_URL no código.');
-  return sample.json(p,{modelTier:'quick',cache:false});
+  if(!hasApi())throw new Error('IA não configurada: coloque a URL do Worker em API_URL no código.');
+  const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:p})});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error||'A IA não respondeu ('+r.status+'). Tente de novo.');
+  const m=String(j.text||'').replace(/```json|```/g,'').trim();
+  try{return JSON.parse(m)}catch(e){throw new Error('Resposta da IA fora do formato. Tente de novo.')}
 }
 async function run(l,fn){busy=l;err='';render();try{await fn()}catch(e){err=(e&&e.message)||'A IA não respondeu. Tente de novo.'}busy='';render()}
 const kn=k=>{const[c,s]=k.split('|');return `${CL[c].n} · ${s}`};
@@ -322,7 +319,7 @@ function cadHTML(){
 }
 const shell=(nav,c)=>`<div class="app">${nav}<div class="m">${c}</div></div>`;
 const RST='<button class="btn2" data-act="reset" style="align-self:flex-start">Zerar dados de teste</button>';
-const stat=()=>(busy?`<p class="chip" style="align-self:flex-start">${esc(busy)}</p>`:'')+(err?`<p class="err">${esc(err)}</p>`:'')+(me&&!sample&&!hasApi()?`<p class="mut">A IA não está configurada: defina API_URL no código.</p>`:'');
+const stat=()=>(busy?`<p class="chip" style="align-self:flex-start">${esc(busy)}</p>`:'')+(err?`<p class="err">${esc(err)}</p>`:'')+(me&&!hasApi()?`<p class="mut">A IA não está configurada: defina API_URL no código.</p>`:'');
 function navHTML(title,items,cur,key){return `<nav class="sb"><b>${title}</b>${items.map(([k,t])=>`<button class="n ${cur===k?'on':''}" data-act="nav" data-w="${key}" data-k="${k}">${t}</button>`).join('')}<span class="g"></span><p class="mut">${esc(me.name)}</p><button class="btn2" data-act="out">Sair</button></nav>`}
 function coordView(){
   const items=me.lvl==='sec'?[['cad','Cadastro']]:[['geral','Visão geral'],['hist','Histórico'],['rank','Ranking'],['res','Resumo semanal'],['cad','Cadastro']];

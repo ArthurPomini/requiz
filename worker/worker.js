@@ -1,12 +1,12 @@
-// Cloudflare Worker: ponte segura entre o site e a API da Anthropic.
+// Cloudflare Worker: ponte segura entre o site e a API do Google Gemini (AI Studio ou Vertex AI).
 // Segredos/variáveis (Settings > Variables and Secrets):
-//   ANTHROPIC_API_KEY  (secret)  -> sua chave da API
-//   ALLOWED_ORIGIN     (texto)   -> ex.: https://seuusuario.github.io
-const MODEL = "claude-haiku-5-5";
+//   GEMINI_API_KEY     (secret)  -> sua chave da API (AIza... do AI Studio ou AQ.... do Vertex AI)
+//   ALLOWED_ORIGIN     (texto)   -> ex.: https://seuusuario.github.io ou *
+const MODEL = "gemini-3.8-flash";
 
 export default {
   async fetch(request, env) {
-    const origin = env.ALLOWED_ORIGIN || "*";
+    const origin = (env.ALLOWED_ORIGIN || "*").replace(/\/$/, "");
     const cors = {
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -33,23 +33,38 @@ export default {
     if (typeof prompt !== "string" || !prompt.trim() || prompt.length > 8000)
       return reply({ error: "Prompt inválido" }, 400);
 
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
+    const apiKey = (env.GEMINI_API_KEY || "").trim();
+    if (!apiKey)
+      return reply({ error: "GEMINI_API_KEY não configurada nas variáveis do Worker" }, 500);
+
+    // Suporta tanto chaves do Google AI Studio (AIza...) quanto do Vertex AI Express (AQ....)
+    const isVertexKey = apiKey.startsWith("AQ.");
+    const url = isVertexKey
+      ? `https://aiplatform.googleapis.com/v1/publishers/google/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`
+      : `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+    const r = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 2000,
-        messages: [{ role: "user", content: prompt }],
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          maxOutputTokens: 4096,
+          responseMimeType: "application/json",
+        },
       }),
     });
-    if (!r.ok) return reply({ error: "Falha na IA" }, 502);
+    if (!r.ok) {
+      const errData = await r.json().catch(() => ({}));
+      const msg = errData?.error?.message || `Erro HTTP ${r.status} na API do Gemini`;
+      return reply({ error: `Falha na IA: ${msg}` }, 502);
+    }
 
     const data = await r.json();
-    const text = (data.content || []).map((b) => b.text || "").join("");
+    const text = (data.candidates?.[0]?.content?.parts || [])
+      .filter((p) => !p.thought)
+      .map((p) => p.text || "")
+      .join("");
     return reply({ text });
   },
 };

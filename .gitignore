@@ -1,4 +1,32 @@
+# Variáveis de ambiente e segredos (NUNCA subir chaves de API)
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+*.pem
+*.key
+
+# Dependências e cache da Cloudflare / Node
 node_modules/
 .wrangler/
-.dev.vars
+.mf/
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Arquivos temporários de editores e IDEs
+*.kate-swp
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Arquivos de sistema operacional
 .DS_Store
+Thumbs.db
